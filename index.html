@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>رمضان كريم - مواقيت الصلاة</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f172a">
+
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+body{
+margin:0;
+font-family:'Cairo',sans-serif;
+background:linear-gradient(135deg,#0f172a,#1e293b);
+color:#fff;
+display:flex;
+justify-content:center;
+align-items:center;
+min-height:100vh;
+}
+
+.app{
+width:95%;
+max-width:420px;
+background:rgba(255,255,255,0.1);
+backdrop-filter:blur(20px);
+border-radius:25px;
+overflow:hidden;
+box-shadow:0 20px 50px rgba(0,0,0,.6);
+}
+
+.header{
+text-align:center;
+padding:20px;
+border-bottom:1px solid rgba(255,255,255,.2);
+}
+
+.ramadan-logo{
+font-size:2rem;
+color:#fbbf24;
+}
+
+.countdown{
+font-size:2.5rem;
+color:#fbbf24;
+font-weight:800;
+margin:10px 0;
+}
+
+.list{padding:15px;}
+
+.card{
+display:flex;
+justify-content:space-between;
+padding:12px;
+margin-bottom:8px;
+background:rgba(255,255,255,.15);
+border-radius:12px;
+}
+
+.card.active{
+background:rgba(251,191,36,.3);
+border:1px solid #fbbf24;
+}
+
+.hadith{
+background:rgba(255,255,255,.15);
+margin:15px;
+padding:12px;
+border-radius:12px;
+font-size:.9rem;
+line-height:1.6;
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+<div class="header">
+<div class="ramadan-logo">🌙 رمضان كريم 🕌</div>
+<div id="nextPrayer"></div>
+<div class="countdown" id="countdown"></div>
+</div>
+
+<div class="list" id="prayerList"></div>
+
+<div class="hadith" id="hadithBox"></div>
+
+</div>
+
+<audio id="adhanAudio" src="adhan.mp3"></audio>
+
+<script>
+let timings={}
+const names={
+Fajr:"الفجر",
+Sunrise:"الشروق",
+Dhuhr:"الظهر",
+Asr:"العصر",
+Maghrib:"المغرب",
+Isha:"العشاء"
+}
+
+const hadiths=[
+"قال رسول الله ﷺ: من صام رمضان إيمانًا واحتسابًا غفر له ما تقدم من ذنبه.",
+"قال ﷺ: الصيام جنة.",
+"قال ﷺ: إن للصائم فرحتين يفرحهما.",
+"قال ﷺ: أفضل الصدقة صدقة في رمضان.",
+"قال ﷺ: تسحروا فإن في السحور بركة."
+]
+
+function loadHadith(){
+const day=new Date().getDate()
+document.getElementById("hadithBox").innerText=
+"حديث اليوم:\n\n"+hadiths[day % hadiths.length]
+}
+
+async function loadTimes(){
+const res=await fetch(
+`https://api.aladhan.com/v1/timingsByCity?city=Cairo&country=Egypt&method=5`
+)
+const data=await res.json()
+timings=data.data.timings
+renderPrayers()
+startClock()
+}
+
+function renderPrayers(){
+const container=document.getElementById("prayerList")
+container.innerHTML=""
+Object.keys(names).forEach(key=>{
+container.innerHTML+=`
+<div class="card" id="card-${key}">
+<span>${names[key]}</span>
+<span>${timings[key]}</span>
+</div>`
+})
+}
+
+function startClock(){
+setInterval(updateCountdown,1000)
+}
+
+function updateCountdown(){
+const now=new Date()
+let minDiff=Infinity
+let upcoming=""
+
+Object.keys(names).forEach(key=>{
+const[hrs,mins]=timings[key].split(":")
+let pDate=new Date()
+pDate.setHours(hrs,mins,0)
+if(pDate<now)pDate.setDate(pDate.getDate()+1)
+const diff=pDate-now
+if(diff<minDiff){
+minDiff=diff
+upcoming=key
+}
+document.getElementById(`card-${key}`).classList.remove("active")
+})
+
+if(!upcoming)return
+
+document.getElementById(`card-${upcoming}`).classList.add("active")
+document.getElementById("nextPrayer").innerText=
+"الصلاة القادمة: "+names[upcoming]
+
+const h=Math.floor(minDiff/3600000)
+const m=Math.floor((minDiff%3600000)/60000)
+const s=Math.floor((minDiff%60000)/1000)
+
+document.getElementById("countdown").innerText=
+`${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`
+
+if(h===0&&m===0&&s===0){
+document.getElementById("adhanAudio").play()
+}
+}
+
+if("serviceWorker" in navigator){
+navigator.serviceWorker.register("service-worker.js")
+}
+
+loadTimes()
+loadHadith()
+</script>
+
+</body>
+</html>
