@@ -1,193 +1,174 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>رمضان كريم - مواقيت مصر</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مواقيت الصلاة - Golden Light</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f2a4a">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #0f2a4a; /* مستوحى من اللوجو */
+            --gold-accent: #d4af37; /* اللون الذهبي في اللوجو */
+            --glass-bg: rgba(255, 255, 255, 0.1);
+        }
 
-<link rel="manifest" href="manifest.json" />
-<meta name="theme-color" content="#0f172a" />
+        body {
+            margin: 0;
+            font-family: 'Cairo', sans-serif;
+            background: radial-gradient(circle, #1a3a5f 0%, #0a1a2e 100%);
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
 
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+        .app {
+            width: 90%;
+            max-width: 400px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 30px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            text-align: center;
+        }
 
-<style>
-body{
-margin:0;font-family:'Cairo',sans-serif;
-background:linear-gradient(135deg,#0f172a,#1e293b);
-color:#fff;display:flex;justify-content:center;align-items:center;min-height:100vh;
-}
-.app{width:95%;max-width:420px;background:rgba(255,255,255,.1);
-backdrop-filter:blur(20px);border-radius:25px;overflow:hidden;
-box-shadow:0 20px 50px rgba(0,0,0,.6);}
-.header{text-align:center;padding:20px;border-bottom:1px solid rgba(255,255,255,.2);}
-.logo{font-size:2rem;color:#fbbf24;}
-.countdown{font-size:2.5rem;color:#fbbf24;font-weight:800;margin:10px 0;}
-.list{padding:15px;}
-.card{display:flex;justify-content:space-between;padding:12px;margin-bottom:8px;background:rgba(255,255,255,.15);border-radius:12px;}
-.card.active{background:rgba(251,191,36,.3);border:1px solid #fbbf24;}
-button{margin-top:10px;padding:8px 15px;border:none;border-radius:10px;background:#fbbf24;font-weight:600;cursor:pointer;}
-</style>
+        .header {
+            padding: 30px 20px;
+            background: rgba(15, 42, 74, 0.6);
+        }
+
+        .logo-container img {
+            width: 120px;
+            border-radius: 50%;
+            border: 2px solid var(--gold-accent);
+            margin-bottom: 15px;
+        }
+
+        .countdown {
+            font-size: 2.8rem;
+            color: var(--gold-accent);
+            font-weight: 800;
+            margin: 10px 0;
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+        }
+
+        .list { padding: 20px; }
+
+        .card {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 20px;
+            margin-bottom: 12px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            border-right: 4px solid transparent;
+            transition: 0.3s;
+        }
+
+        .card.active {
+            background: rgba(212, 175, 55, 0.2);
+            border-right-color: var(--gold-accent);
+            transform: scale(1.05);
+        }
+
+        .btn-activate {
+            background: var(--gold-accent);
+            color: var(--primary-blue);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+    </style>
 </head>
-
 <body>
 
 <div class="app">
-<div class="header">
-<div class="logo">🌙 رمضان كريم 🕌</div>
-<div id="nextPrayer"></div>
-<div class="countdown" id="countdown">--:--:--</div>
-<button id="stopBtn" style="display:none;">إيقاف الأذان</button>
-</div>
-<div class="list" id="prayerList"></div>
+    <div class="header">
+        <div class="logo-container">
+            <img src="icon.png" alt="Logo">
+        </div>
+        <button class="btn-activate" onclick="enableAudio()">تفعيل الأذان والاهتزاز 🔔</button>
+        <div id="nextPrayer" style="color: var(--gold-accent); font-weight: bold;">جاري التحميل...</div>
+        <div class="countdown" id="countdown">00:00:00</div>
+    </div>
+
+    <div class="list" id="prayerList"></div>
+    <div id="status" style="font-size: 0.8rem; opacity: 0.6; padding-bottom: 15px;">المصدر: الهيئة المصرية للمساحة</div>
 </div>
 
-<audio id="adhanAudio" src="adhan.mp3" preload="auto"></audio>
+<audio id="adhanAudio" src="adhan.mp3"></audio>
 
 <script>
-let timings={}
-let notified10=null
-let notified0=null
-let adhanPlayed=false
-let repeatCount=0
+    let timings = {};
+    const names = { Fajr: "الفجر", Sunrise: "الشروق", Dhuhr: "الظهر", Asr: "العصر", Maghrib: "المغرب", Isha: "العشاء" };
 
-const names={
-Fajr:"الفجر",Sunrise:"الشروق",Dhuhr:"الظهر",
-Asr:"العصر",Maghrib:"المغرب",Isha:"العشاء"
-}
+    function enableAudio() {
+        const adhan = document.getElementById("adhanAudio");
+        adhan.play().then(() => { adhan.pause(); adhan.currentTime = 0; });
+        if ("Notification" in window) Notification.requestPermission();
+        alert("تم تفعيل التنبيهات بنجاح!");
+    }
 
-async function loadTimes(){
-requestNotificationPermission()
+    async function loadTimes() {
+        // تم ضبط الطريقة 5 (مصر) والمدينة القاهرة
+        const res = await fetch(`https://api.aladhan.com/v1/timingsByCity?city=Cairo&country=Egypt&method=5`);
+        const data = await res.json();
+        timings = data.data.timings;
+        renderPrayers();
+        setInterval(updateCountdown, 1000);
+    }
 
-const res=await fetch(
-`https://api.aladhan.com/v1/timingsByCity?city=Cairo&country=Egypt&method=5`
-)
-const data=await res.json()
-timings=data.data.timings
-renderPrayers()
-startClock()
-}
+    function renderPrayers() {
+        const container = document.getElementById("prayerList");
+        container.innerHTML = "";
+        Object.keys(names).forEach(key => {
+            container.innerHTML += `
+                <div class="card" id="card-${key}">
+                    <span style="font-weight: bold;">${names[key]}</span>
+                    <span>${timings[key]}</span>
+                </div>`;
+        });
+    }
 
-function renderPrayers(){
-const container=document.getElementById("prayerList")
-container.innerHTML=""
-Object.keys(names).forEach(key=>{
-container.innerHTML+=`
-<div class="card" id="card-${key}">
-<span>${names[key]}</span>
-<span>${timings[key]}</span>
-</div>`
-})
-}
+    function updateCountdown() {
+        const now = new Date();
+        let minDiff = Infinity;
+        let upcoming = "";
 
-function startClock(){
-setInterval(updateCountdown,1000)
-}
+        Object.keys(names).forEach(key => {
+            const [hrs, mins] = timings[key].split(":");
+            let pDate = new Date();
+            pDate.setHours(hrs, mins, 0);
+            if (pDate < now) pDate.setDate(pDate.getDate() + 1);
+            const diff = pDate - now;
+            if (diff < minDiff) { minDiff = diff; upcoming = key; }
+            document.getElementById(`card-${key}`).classList.remove("active");
+        });
 
-function updateCountdown(){
-const now=new Date()
-let minDiff=Infinity
-let upcoming=""
+        document.getElementById(`card-${upcoming}`).classList.add("active");
+        document.getElementById("nextPrayer").innerText = "الصلاة القادمة: " + names[upcoming];
 
-Object.keys(names).forEach(key=>{
-const [hrs,mins]=timings[key].split(":")
-let pDate=new Date()
-pDate.setHours(hrs,mins,0)
-if(pDate<now)pDate.setDate(pDate.getDate()+1)
-const diff=pDate-now
-if(diff<minDiff){minDiff=diff;upcoming=key}
-document.getElementById(`card-${key}`).classList.remove("active")
-})
+        const h = Math.floor(minDiff / 3600000);
+        const m = Math.floor((minDiff % 3600000) / 60000);
+        const s = Math.floor((minDiff % 60000) / 1000);
+        document.getElementById("countdown").innerText = `${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`;
 
-if(!upcoming)return
-document.getElementById(`card-${upcoming}`).classList.add("active")
-document.getElementById("nextPrayer").innerText="الصلاة القادمة: "+names[upcoming]
+        if (h === 0 && m === 0 && s === 0) {
+            document.getElementById("adhanAudio").play();
+            if ("vibrate" in navigator) navigator.vibrate([1000, 500, 1000]);
+        }
+    }
 
-const h=Math.floor(minDiff/3600000)
-const m=Math.floor((minDiff%3600000)/60000)
-const s=Math.floor((minDiff%60000)/1000)
-
-document.getElementById("countdown").innerText=
-`${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`
-
-// 🔔 قبل 10 دقائق
-if(m===10 && s===0 && notified10!==upcoming){
-showNotification("تنبيه الصلاة",
-`متبقي 10 دقائق على صلاة ${names[upcoming]}`)
-vibrate()
-notified10=upcoming
-}
-
-// 🔔 عند دخول الوقت
-if(h===0 && m===0 && s===0 && notified0!==upcoming){
-showNotification("حان الآن موعد الصلاة",
-`حان الآن موعد صلاة ${names[upcoming]}`)
-playAdhan()
-vibrate()
-notified0=upcoming
-}
-}
-
-function playAdhan(){
-if(adhanPlayed)return
-const audio=document.getElementById("adhanAudio")
-audio.play()
-document.getElementById("stopBtn").style.display="block"
-adhanPlayed=true
-
-// 🔁 تكرار مرة واحدة فقط
-audio.onended=function(){
-if(repeatCount<1){
-repeatCount++
-audio.play()
-}else{
-stopAdhan()
-}
-}
-}
-
-function stopAdhan(){
-const audio=document.getElementById("adhanAudio")
-audio.pause()
-audio.currentTime=0
-document.getElementById("stopBtn").style.display="none"
-adhanPlayed=false
-repeatCount=0
-}
-
-document.getElementById("stopBtn").onclick=stopAdhan
-
-function vibrate(){
-if("vibrate" in navigator){
-navigator.vibrate([300,200,300])
-}
-}
-
-function requestNotificationPermission(){
-if("Notification" in window){
-Notification.requestPermission()
-}
-}
-
-function showNotification(title,body){
-if(Notification.permission==="granted"){
-navigator.serviceWorker.getRegistration().then(reg=>{
-if(reg){
-reg.showNotification(title,{
-body:body,
-icon:"icon.png",
-vibrate:[200,100,200],
-requireInteraction:true
-})
-}
-})
-}
-}
-
-if("serviceWorker" in navigator){
-navigator.serviceWorker.register("service-worker.js")
-}
-
-loadTimes()
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("service-worker.js");
+    loadTimes();
 </script>
 </body>
 </html>
