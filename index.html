@@ -9,8 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-blue: #0f2a4a; /* مستوحى من اللوجو */
-            --gold-accent: #d4af37; /* اللون الذهبي في اللوجو */
+            --primary-blue: #0f2a4a;
+            --gold-accent: #d4af37;
             --glass-bg: rgba(255, 255, 255, 0.1);
         }
 
@@ -23,6 +23,7 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            padding: 20px 0;
         }
 
         .app {
@@ -43,27 +44,29 @@
         }
 
         .logo-container img {
-            width: 120px;
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
             border: 2px solid var(--gold-accent);
             margin-bottom: 15px;
+            object-fit: cover;
         }
 
         .countdown {
-            font-size: 2.8rem;
+            font-size: 2.5rem;
             color: var(--gold-accent);
             font-weight: 800;
             margin: 10px 0;
             text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
         }
 
-        .list { padding: 20px; }
+        .list { padding: 15px; }
 
         .card {
             display: flex;
             justify-content: space-between;
-            padding: 15px 20px;
-            margin-bottom: 12px;
+            padding: 12px 20px;
+            margin-bottom: 10px;
             background: rgba(255, 255, 255, 0.08);
             border-radius: 15px;
             border-right: 4px solid transparent;
@@ -73,7 +76,31 @@
         .card.active {
             background: rgba(212, 175, 55, 0.2);
             border-right-color: var(--gold-accent);
-            transform: scale(1.05);
+            transform: scale(1.02);
+        }
+
+        /* تنسيق قسم الحديث النبوي */
+        .hadith-section {
+            margin: 15px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            border: 1px dashed var(--gold-accent);
+        }
+
+        .hadith-title {
+            color: var(--gold-accent);
+            font-size: 0.9rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        #hadithText {
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #efefef;
+            font-style: italic;
         }
 
         .btn-activate {
@@ -85,6 +112,7 @@
             font-weight: bold;
             cursor: pointer;
             margin-bottom: 15px;
+            font-family: 'Cairo';
         }
     </style>
 </head>
@@ -93,15 +121,21 @@
 <div class="app">
     <div class="header">
         <div class="logo-container">
-            <img src="icon.png" alt="Logo">
+            <img src="icon.png" alt="Golden Light Logo">
         </div>
-        <button class="btn-activate" onclick="enableAudio()">تفعيل الأذان والاهتزاز 🔔</button>
-        <div id="nextPrayer" style="color: var(--gold-accent); font-weight: bold;">جاري التحميل...</div>
+        <button class="btn-activate" onclick="enableAudio()">تفعيل التنبيهات 🔔</button>
+        <div id="nextPrayer" style="color: var(--gold-accent); font-weight: bold; font-size: 1.1rem;">جاري التحميل...</div>
         <div class="countdown" id="countdown">00:00:00</div>
     </div>
 
     <div class="list" id="prayerList"></div>
-    <div id="status" style="font-size: 0.8rem; opacity: 0.6; padding-bottom: 15px;">المصدر: الهيئة المصرية للمساحة</div>
+
+    <div class="hadith-section">
+        <span class="hadith-title">✨ حديث اليوم</span>
+        <div id="hadithText">"إنما الأعمال بالنيات، وإنما لكل امرئ ما نوى"</div>
+    </div>
+
+    <div id="status" style="font-size: 0.7rem; opacity: 0.5; padding-bottom: 15px;">المصدر: الهيئة المصرية للمساحة</div>
 </div>
 
 <audio id="adhanAudio" src="adhan.mp3"></audio>
@@ -109,21 +143,45 @@
 <script>
     let timings = {};
     const names = { Fajr: "الفجر", Sunrise: "الشروق", Dhuhr: "الظهر", Asr: "العصر", Maghrib: "المغرب", Isha: "العشاء" };
+    
+    // قائمة الأحاديث - يمكنك زيادة القائمة كما تشاء
+    const hadiths = [
+        "«خياركم من تعلم القرآن وعلمه»",
+        "«من سلك طريقاً يلتمس فيه علماً سهل الله له به طريقاً إلى الجنة»",
+        "«كلمتان خفيفتان على اللسان، ثقيلتان في الميزان: سبحان الله وبحمده، سبحان الله العظيم»",
+        "«لا يؤمن أحدكم حتى يحب لأخيه ما يحب لنفسه»",
+        "«اتق الله حيثما كنت، وأتبع السيئة الحسنة تمحها»",
+        "«الدعاء هو العبادة»",
+        "«من صلى البردين دخل الجنة» (البردين: الصبح والعصر)",
+        "«تبسمك في وجه أخيك لك صدقة»"
+    ];
 
     function enableAudio() {
         const adhan = document.getElementById("adhanAudio");
         adhan.play().then(() => { adhan.pause(); adhan.currentTime = 0; });
         if ("Notification" in window) Notification.requestPermission();
-        alert("تم تفعيل التنبيهات بنجاح!");
+        alert("تم تفعيل الأذان بنجاح!");
+    }
+
+    // دالة اختيار حديث اليوم بناءً على التاريخ
+    function setDailyHadith() {
+        const today = new Date();
+        const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 86400000);
+        const index = dayOfYear % hadiths.length;
+        document.getElementById("hadithText").innerText = hadiths[index];
     }
 
     async function loadTimes() {
-        // تم ضبط الطريقة 5 (مصر) والمدينة القاهرة
-        const res = await fetch(`https://api.aladhan.com/v1/timingsByCity?city=Cairo&country=Egypt&method=5`);
-        const data = await res.json();
-        timings = data.data.timings;
-        renderPrayers();
-        setInterval(updateCountdown, 1000);
+        try {
+            const res = await fetch(`https://api.aladhan.com/v1/timingsByCity?city=Cairo&country=Egypt&method=5`);
+            const data = await res.json();
+            timings = data.data.timings;
+            renderPrayers();
+            setDailyHadith();
+            setInterval(updateCountdown, 1000);
+        } catch (error) {
+            document.getElementById("nextPrayer").innerText = "خطأ في الاتصال";
+        }
     }
 
     function renderPrayers() {
@@ -149,11 +207,17 @@
             pDate.setHours(hrs, mins, 0);
             if (pDate < now) pDate.setDate(pDate.getDate() + 1);
             const diff = pDate - now;
-            if (diff < minDiff) { minDiff = diff; upcoming = key; }
+            
             document.getElementById(`card-${key}`).classList.remove("active");
+            if (diff < minDiff) { 
+                minDiff = diff; 
+                upcoming = key; 
+            }
         });
 
-        document.getElementById(`card-${upcoming}`).classList.add("active");
+        const activeCard = document.getElementById(`card-${upcoming}`);
+        if(activeCard) activeCard.classList.add("active");
+        
         document.getElementById("nextPrayer").innerText = "الصلاة القادمة: " + names[upcoming];
 
         const h = Math.floor(minDiff / 3600000);
@@ -161,13 +225,17 @@
         const s = Math.floor((minDiff % 60000) / 1000);
         document.getElementById("countdown").innerText = `${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`;
 
+        // تشغيل الأذان عند الصفر
         if (h === 0 && m === 0 && s === 0) {
             document.getElementById("adhanAudio").play();
             if ("vibrate" in navigator) navigator.vibrate([1000, 500, 1000]);
         }
     }
 
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("service-worker.js");
+    if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("service-worker.js");
+    }
+    
     loadTimes();
 </script>
 </body>
