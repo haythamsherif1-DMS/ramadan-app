@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مواقيت الصلاة - Golden Light</title>
-    <link rel="manifest" href="manifest.json">
+    <title>مواقيت الصلاة - Golden Light v1.1</title>
+    
+    <link rel="manifest" href="manifest.json?v=1.1">
     <meta name="theme-color" content="#0f2a4a">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+    
     <style>
         :root {
             --primary-blue: #0f2a4a;
@@ -79,7 +81,6 @@
             transform: scale(1.02);
         }
 
-        /* تنسيق قسم الحديث النبوي */
         .hadith-section {
             margin: 15px;
             padding: 15px;
@@ -114,6 +115,12 @@
             margin-bottom: 15px;
             font-family: 'Cairo';
         }
+
+        .version-tag {
+            font-size: 0.6rem;
+            opacity: 0.4;
+            padding-bottom: 10px;
+        }
     </style>
 </head>
 <body>
@@ -121,7 +128,7 @@
 <div class="app">
     <div class="header">
         <div class="logo-container">
-            <img src="icon.png" alt="Golden Light Logo">
+            <img src="icon.png" alt="Logo">
         </div>
         <button class="btn-activate" onclick="enableAudio()">تفعيل التنبيهات 🔔</button>
         <div id="nextPrayer" style="color: var(--gold-accent); font-weight: bold; font-size: 1.1rem;">جاري التحميل...</div>
@@ -132,27 +139,31 @@
 
     <div class="hadith-section">
         <span class="hadith-title">✨ حديث اليوم</span>
-        <div id="hadithText">"إنما الأعمال بالنيات، وإنما لكل امرئ ما نوى"</div>
+        <div id="hadithText">جاري تحميل الحديث النبوي...</div>
     </div>
 
-    <div id="status" style="font-size: 0.7rem; opacity: 0.5; padding-bottom: 15px;">المصدر: الهيئة المصرية للمساحة</div>
+    <div id="status" style="font-size: 0.7rem; opacity: 0.5;">المصدر: الهيئة المصرية للمساحة</div>
+    <div class="version-tag" id="appVersionDisplay"></div>
 </div>
 
 <audio id="adhanAudio" src="adhan.mp3"></audio>
 
 <script>
+    // --- متغير الإصدار الرئيسي ---
+    const APP_VERSION = "1.1"; // قم بتغيير هذا الرقم فقط عند كل تحديث
+    
+    document.getElementById("appVersionDisplay").innerText = "Version " + APP_VERSION;
+
     let timings = {};
     const names = { Fajr: "الفجر", Sunrise: "الشروق", Dhuhr: "الظهر", Asr: "العصر", Maghrib: "المغرب", Isha: "العشاء" };
     
-    // قائمة الأحاديث - يمكنك زيادة القائمة كما تشاء
     const hadiths = [
         "«خياركم من تعلم القرآن وعلمه»",
+        "«إنما الأعمال بالنيات، وإنما لكل امرئ ما نوى»",
         "«من سلك طريقاً يلتمس فيه علماً سهل الله له به طريقاً إلى الجنة»",
         "«كلمتان خفيفتان على اللسان، ثقيلتان في الميزان: سبحان الله وبحمده، سبحان الله العظيم»",
         "«لا يؤمن أحدكم حتى يحب لأخيه ما يحب لنفسه»",
         "«اتق الله حيثما كنت، وأتبع السيئة الحسنة تمحها»",
-        "«الدعاء هو العبادة»",
-        "«من صلى البردين دخل الجنة» (البردين: الصبح والعصر)",
         "«تبسمك في وجه أخيك لك صدقة»"
     ];
 
@@ -160,10 +171,9 @@
         const adhan = document.getElementById("adhanAudio");
         adhan.play().then(() => { adhan.pause(); adhan.currentTime = 0; });
         if ("Notification" in window) Notification.requestPermission();
-        alert("تم تفعيل الأذان بنجاح!");
+        alert("تم تفعيل التنبيهات للنسخة " + APP_VERSION);
     }
 
-    // دالة اختيار حديث اليوم بناءً على التاريخ
     function setDailyHadith() {
         const today = new Date();
         const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 86400000);
@@ -173,7 +183,7 @@
 
     async function loadTimes() {
         try {
-            const res = await fetch(`https://api.aladhan.com/v1/timingsByCity?city=Cairo&country=Egypt&method=5`);
+            const res = await fetch(`https://api.aladhan.com/v1/timingsByCity?city=Cairo&country=Egypt&method=5&v=${APP_VERSION}`);
             const data = await res.json();
             timings = data.data.timings;
             renderPrayers();
@@ -217,7 +227,6 @@
 
         const activeCard = document.getElementById(`card-${upcoming}`);
         if(activeCard) activeCard.classList.add("active");
-        
         document.getElementById("nextPrayer").innerText = "الصلاة القادمة: " + names[upcoming];
 
         const h = Math.floor(minDiff / 3600000);
@@ -225,15 +234,25 @@
         const s = Math.floor((minDiff % 60000) / 1000);
         document.getElementById("countdown").innerText = `${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`;
 
-        // تشغيل الأذان عند الصفر
         if (h === 0 && m === 0 && s === 0) {
             document.getElementById("adhanAudio").play();
             if ("vibrate" in navigator) navigator.vibrate([1000, 500, 1000]);
         }
     }
 
+    // تسجيل الـ Service Worker مع مسح الكاش عند تغيير النسخة
     if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("service-worker.js");
+        navigator.serviceWorker.register(`service-worker.js?v=${APP_VERSION}`).then(reg => {
+            reg.onupdatefound = () => {
+                const installingWorker = reg.installing;
+                installingWorker.onstatechange = () => {
+                    if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        // هناك تحديث جديد، نقوم بإعادة تحميل الصفحة
+                        window.location.reload();
+                    }
+                };
+            };
+        });
     }
     
     loadTimes();
