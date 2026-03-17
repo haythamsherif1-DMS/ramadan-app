@@ -1,4 +1,4 @@
-const VERSION = "1.1"; // قم بتغيير هذا الرقم عند كل تحديث جديد
+const VERSION = "1.2"; // قم بتغيير هذا الرقم عند كل تحديث جديد
 const CACHE_NAME = `ramadan-app-v${VERSION}`;
 
 const ASSETS_TO_CACHE = [
