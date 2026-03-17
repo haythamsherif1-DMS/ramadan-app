@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مواقيت الصلاة - Golden Light v1.1</title>
+    <title>مواقيت الصلاة - Golden Light v1.2</title>
     
-    <link rel="manifest" href="manifest.json?v=1.1">
+    <link rel="manifest" href="manifest.json?v=1.2">
     <meta name="theme-color" content="#0f2a4a">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
     
@@ -46,12 +46,35 @@
         }
 
         .logo-container img {
-            width: 100px;
-            height: 100px;
+            width: 80px;
+            height: 80px;
             border-radius: 50%;
             border: 2px solid var(--gold-accent);
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             object-fit: cover;
+        }
+
+        /* تنسيق التاريخ الجديد */
+        .date-box {
+            margin: 10px 0 20px 0;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+        }
+
+        .hijri-date {
+            color: var(--gold-accent);
+            font-weight: 800;
+            font-size: 1.1rem;
+            display: block;
+        }
+
+        .gregorian-date {
+            color: #aaa;
+            font-size: 0.8rem;
+            display: block;
+            margin-top: 4px;
         }
 
         .countdown {
@@ -108,12 +131,19 @@
             background: var(--gold-accent);
             color: var(--primary-blue);
             border: none;
-            padding: 10px 20px;
+            padding: 8px 18px;
             border-radius: 50px;
             font-weight: bold;
             cursor: pointer;
             margin-bottom: 15px;
             font-family: 'Cairo';
+            font-size: 0.8rem;
+        }
+
+        .location-info {
+            font-size: 0.75rem;
+            color: #4facfe;
+            margin-bottom: 5px;
         }
 
         .version-tag {
@@ -130,8 +160,17 @@
         <div class="logo-container">
             <img src="icon.png" alt="Logo">
         </div>
+        
         <button class="btn-activate" onclick="enableAudio()">تفعيل التنبيهات 🔔</button>
-        <div id="nextPrayer" style="color: var(--gold-accent); font-weight: bold; font-size: 1.1rem;">جاري التحميل...</div>
+        
+        <div class="location-info" id="locationText">تحديد الموقع...</div>
+        
+        <div class="date-box">
+            <span id="hijriDate" class="hijri-date">-- --- ----</span>
+            <span id="gregorianDate" class="gregorian-date">--/--/----</span>
+        </div>
+
+        <div id="nextPrayer" style="color: var(--gold-accent); font-weight: bold; font-size: 1rem; opacity: 0.9;">جاري الحساب...</div>
         <div class="countdown" id="countdown">00:00:00</div>
     </div>
 
@@ -142,16 +181,14 @@
         <div id="hadithText">جاري تحميل الحديث النبوي...</div>
     </div>
 
-    <div id="status" style="font-size: 0.7rem; opacity: 0.5;">المصدر: الهيئة المصرية للمساحة</div>
+    <div id="status" style="font-size: 0.7rem; opacity: 0.5; margin-bottom: 5px;">المصدر: الهيئة المصرية للمساحة (أوتوماتيكي)</div>
     <div class="version-tag" id="appVersionDisplay"></div>
 </div>
 
 <audio id="adhanAudio" src="adhan.mp3"></audio>
 
 <script>
-    // --- متغير الإصدار الرئيسي ---
-    const APP_VERSION = "1.1"; // قم بتغيير هذا الرقم فقط عند كل تحديث
-    
+    const APP_VERSION = "1.2";
     document.getElementById("appVersionDisplay").innerText = "Version " + APP_VERSION;
 
     let timings = {};
@@ -171,7 +208,7 @@
         const adhan = document.getElementById("adhanAudio");
         adhan.play().then(() => { adhan.pause(); adhan.currentTime = 0; });
         if ("Notification" in window) Notification.requestPermission();
-        alert("تم تفعيل التنبيهات للنسخة " + APP_VERSION);
+        alert("تم تفعيل التنبيهات بنجاح ✅");
     }
 
     function setDailyHadith() {
@@ -181,16 +218,44 @@
         document.getElementById("hadithText").innerText = hadiths[index];
     }
 
-    async function loadTimes() {
+    // وظيفة تحديد الموقع وجلب البيانات
+    function getLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    document.getElementById("locationText").innerText = `📍 موقعك الحالي: ${lat.toFixed(2)}, ${lng.toFixed(2)}`;
+                    loadTimes(lat, lng);
+                },
+                () => {
+                    document.getElementById("locationText").innerText = "📍 القاهرة (افتراضي - تعذر الوصول للموقع)";
+                    loadTimes(30.0444, 31.2357); // إحداثيات القاهرة كافتراضي
+                }
+            );
+        } else {
+            loadTimes(30.0444, 31.2357);
+        }
+    }
+
+    async function loadTimes(lat, lng) {
         try {
-            const res = await fetch(`https://api.aladhan.com/v1/timingsByCity?city=Cairo&country=Egypt&method=5&v=${APP_VERSION}`);
+            // استخدام الإحداثيات لجلب المواعيد (Method 5 للهيئة المصرية للمساحة)
+            const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=5`);
             const data = await res.json();
+            
             timings = data.data.timings;
+            
+            // تحديث التواريخ
+            const dateInfo = data.data.date;
+            document.getElementById("hijriDate").innerText = `${dateInfo.hijri.day} ${dateInfo.hijri.month.ar} ${dateInfo.hijri.year}`;
+            document.getElementById("gregorianDate").innerText = `${dateInfo.gregorian.day} ${dateInfo.gregorian.month.en} ${dateInfo.gregorian.year}`;
+
             renderPrayers();
             setDailyHadith();
             setInterval(updateCountdown, 1000);
         } catch (error) {
-            document.getElementById("nextPrayer").innerText = "خطأ في الاتصال";
+            document.getElementById("nextPrayer").innerText = "خطأ في جلب البيانات";
         }
     }
 
@@ -218,7 +283,9 @@
             if (pDate < now) pDate.setDate(pDate.getDate() + 1);
             const diff = pDate - now;
             
-            document.getElementById(`card-${key}`).classList.remove("active");
+            const card = document.getElementById(`card-${key}`);
+            if(card) card.classList.remove("active");
+            
             if (diff < minDiff) { 
                 minDiff = diff; 
                 upcoming = key; 
@@ -236,26 +303,16 @@
 
         if (h === 0 && m === 0 && s === 0) {
             document.getElementById("adhanAudio").play();
-            if ("vibrate" in navigator) navigator.vibrate([1000, 500, 1000]);
         }
     }
 
-    // تسجيل الـ Service Worker مع مسح الكاش عند تغيير النسخة
+    // تشغيل التطبيق عند التحميل
+    window.onload = getLocation;
+
+    // Service Worker
     if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register(`service-worker.js?v=${APP_VERSION}`).then(reg => {
-            reg.onupdatefound = () => {
-                const installingWorker = reg.installing;
-                installingWorker.onstatechange = () => {
-                    if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        // هناك تحديث جديد، نقوم بإعادة تحميل الصفحة
-                        window.location.reload();
-                    }
-                };
-            };
-        });
+        navigator.serviceWorker.register(`service-worker.js?v=${APP_VERSION}`);
     }
-    
-    loadTimes();
 </script>
 </body>
 </html>
